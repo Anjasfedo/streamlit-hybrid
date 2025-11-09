@@ -29,3 +29,32 @@ def reset_embed_state(method_key_prefix):
         st.session_state[image_key] = None
     if params_key in st.session_state:
         st.session_state[params_key] = None
+        
+def make_image_grid(image_results: list, num_columns: int = 4):
+    """
+    Menghasilkan grid gambar yang responsif dengan caption.
+    
+    Args:
+        image_results (list): Sebuah list dari tuple, di mana setiap tuple adalah
+                              (label, ber, img_array).
+        num_columns (int): Jumlah kolom untuk grid.
+    """
+    # Membuat kolom
+    cols = st.columns(num_columns)
+    
+    # Iterasi melalui hasil dan letakkan setiap gambar
+    for index, (label, ber, img) in enumerate(image_results):
+        if img is not None:
+            # Tentukan di kolom mana gambar akan ditempatkan
+            col_index = index % num_columns
+            with cols[col_index]:
+                st.image(
+                    img, 
+                    caption=f"{label} (BER: {ber:.4f})", 
+                    use_container_width=True
+                )
+                
+                # --- PERUBAHAN DI SINI ---
+                # Menambahkan spasi vertikal di bawah setiap gambar
+                st.write("")
+                # --- AKHIR PERUBAHAN ---

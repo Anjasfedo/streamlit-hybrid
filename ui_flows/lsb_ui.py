@@ -15,6 +15,7 @@ from methods.spatial.lsb import LSBSteganography, LSB_DEFAULT_PARAM
 from metrics.impercability import SteganographyMetrics
 from metrics.robustness import RobustnessTester, ATTACK_CONFIGURATIONS
 from helpers.message_binary import message_to_binary
+from ui_flows.utils import make_image_grid
 
 def draw_lsb_embed_tab():
     """Menampilkan UI untuk tab Embed LSB."""
@@ -240,12 +241,8 @@ def draw_lsb_extract_tab():
                             df_ber = pd.DataFrame(ber_data)
                             st.dataframe(df_ber, height=300)
                             st.subheader("Attacked Images")
-                            cols = st.columns(4)
-                            col_index = 0
-                            for label, ber, img in image_results:
-                                with cols[col_index % 4]:
-                                    st.image(img, caption=f"{label} (BER: {ber:.4f})", use_container_width=True)
-                                col_index += 1
+                            if image_results:
+                                make_image_grid(image_results, num_columns=4)
                     else:
                         st.info("Enter the original message to calculate robustness (BER).")
 

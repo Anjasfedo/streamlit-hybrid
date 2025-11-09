@@ -41,10 +41,10 @@ if 'dct_params_json' not in st.session_state: st.session_state.dct_params_json =
 # Parameter Ekstraksi
 if 'lsb_extract_bits_per_channel' not in st.session_state:
     st.session_state.lsb_extract_bits_per_channel = LSB_DEFAULT_PARAM['bits_per_channel']
-if 'lsb_extract_bit_length' not in st.session_state:
-    st.session_state.lsb_extract_bit_length = 512
-if 'pvd_extract_bit_length' not in st.session_state:
-    st.session_state.pvd_extract_bit_length = 512
+# if 'lsb_extract_bit_length' not in st.session_state:
+#     st.session_state.lsb_extract_bit_length = 512
+# if 'pvd_extract_bit_length' not in st.session_state:
+#     st.session_state.pvd_extract_bit_length = 512
 # (Tambahkan inisialisasi state untuk DCT dan Hybrid di sini)
 
 

@@ -1,5 +1,3 @@
-# ui_flows/pvd_ui.py
-
 import streamlit as st
 import json
 import numpy as np
@@ -15,6 +13,18 @@ from methods.spatial.pvd import PVDSteganography, PVD_DEFAULT_PARAM
 from metrics.impercability import SteganographyMetrics
 from metrics.robustness import RobustnessTester, ATTACK_CONFIGURATIONS
 from helpers.message_binary import message_to_binary
+from ui_flows.utils import make_image_grid
+# --- PERUBAHAN DI SINI: Inisialisasi PVD sekali ---
+@st.cache_resource
+def get_pvd_instance():
+    """
+    Menginisialisasi kelas PVDSteganography sekali dan menyimpannya 
+    di cache resource Streamlit.
+    """
+    print("Initializing PVDSteganography instance...")
+    return PVDSteganography()
+# --- AKHIR PERUBAHAN ---
+
 
 def draw_pvd_embed_tab():
     """Menampilkan UI untuk tab Embed PVD."""
@@ -49,13 +59,13 @@ def draw_pvd_embed_tab():
             st.session_state.pvd_stego_image_bytes = None 
             st.session_state.pvd_params_json = None
         else:
-            # --- PERUBAHAN DI SINI: Menambahkan st.spinner ---
             with st.spinner("Embedding message, please wait... ⏳"):
                 try:
                     file_bytes = np.asarray(bytearray(cover_image_file.read()), dtype=np.uint8)
                     cover_image_rgb = cv2.cvtColor(cv2.imdecode(file_bytes, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
                     
-                    pvd_stego = PVDSteganography() # Inisialisasi PVD
+                    # --- PERUBAHAN DI SINI: Menggunakan instance dari cache ---
+                    pvd_stego = get_pvd_instance()
                     stego_image_np, final_bit_length = pvd_stego.embed(cover_image_rgb, pvd_embed_msg)
 
                     stego_image_pil = Image.fromarray(stego_image_np)
@@ -78,6 +88,18 @@ def draw_pvd_embed_tab():
                     st.error(f"An unexpected error occurred: {e}")
                     st.session_state.pvd_stego_image_bytes = None
                     st.session_state.pvd_params_json = None
+    
+    if st.session_state.pvd_stego_image_bytes is not None:
+        st.subheader("Embedding Results")
+        res_col1, res_col2 = st.columns(2)
+        with res_col1:
+            st.write("**Stego-Image**")
+            st.image(st.session_state.pvd_stego_image_bytes, caption="Steganographic Image", use_container_width=True)
+            st.download_button(label="Download Image", data=st.session_state.pvd_stego_image_bytes, file_name="pvd_stego_image.png", mime="image/png")
+        with res_col2:
+            st.write("**Parameters Used**")
+            st.download_button(label="Download Parameters", data=st.session_state.pvd_params_json, file_name="pvd_parameters.json", mime="application/json")
+
 
 def draw_pvd_extract_tab():
     """Menampilkan UI untuk tab Extract PVD."""
@@ -99,6 +121,7 @@ def draw_pvd_extract_tab():
             loaded_bit_length = param_data.get('message_bit_length')
 
             if loaded_bit_length is not None:
+                # Ini berfungsi karena 'pvd_extract_bit_length' tidak memiliki 'value='
                 st.session_state.pvd_extract_bit_length = loaded_bit_length
 
             st.toast("Parameters loaded successfully!")
@@ -123,7 +146,7 @@ def draw_pvd_extract_tab():
     message_bit_length_extract = st.number_input(
         "Enter the bit length of the secret message", 
         min_value=1, 
-        key="pvd_extract_bit_length"
+        key="pvd_extract_bit_length" # Tidak ada 'value=', jadi ini aman
     )
     
     st.subheader("Optional Inputs for Metrics")
@@ -148,13 +171,13 @@ def draw_pvd_extract_tab():
         if stego_image_file_extract is None:
             st.error("Please upload a stego-image first!")
         else:
-            # --- PERUBAHAN DI SINI: Menambahkan st.spinner ---
             with st.spinner("Extracting message and calculating metrics... ⏳"):
                 try:
                     file_bytes = np.asarray(bytearray(stego_image_file_extract.read()), dtype=np.uint8)
                     stego_image_rgb = cv2.cvtColor(cv2.imdecode(file_bytes, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
                     
-                    pvd_stego_extract = PVDSteganography()
+                    # --- PERUBAHAN DI SINI: Menggunakan instance dari cache ---
+                    pvd_stego_extract = get_pvd_instance()
                     extracted_message = pvd_stego_extract.extract(stego_image_rgb, message_bit_length_extract)
                     
                     st.subheader("Extracted Message")
@@ -180,7 +203,8 @@ def draw_pvd_extract_tab():
                     if optional_original_message:
                         with st.spinner("Calculating robustness (BER) against 32 attacks..."):
                             original_binary_message = message_to_binary(optional_original_message)
-                            tester = RobustnessTester(pvd_stego_extract, original_binary_message)
+                            # --- PERUBAHAN DI SINI: Menggunakan instance dari cache ---
+                            tester = RobustnessTester(get_pvd_instance(), original_binary_message)
                             results = tester.run_all_tests(
                                 stego_image=stego_image_rgb,
                                 attack_configurations=ATTACK_CONFIGURATIONS,
@@ -195,12 +219,8 @@ def draw_pvd_extract_tab():
                             df_ber = pd.DataFrame(ber_data)
                             st.dataframe(df_ber, height=300)
                             st.subheader("Attacked Images")
-                            cols = st.columns(4)
-                            col_index = 0
-                            for label, ber, img in image_results:
-                                with cols[col_index % 4]:
-                                    st.image(img, caption=f"{label} (BER: {ber:.4f})", use_container_width=True)
-                                col_index += 1
+                            if image_results:
+                                make_image_grid(image_results, num_columns=4)
                     else:
                         st.info("Enter the original message to calculate robustness (BER).")
 
